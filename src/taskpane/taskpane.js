@@ -9,7 +9,6 @@ let API_url_check_if_new_email = "https://api.bextra.io/email/are_there_any_mess
 
 Office.initialize = () => {
   console.log("Initialized")
-
 };
 
 Office.onReady((info) => {
@@ -24,12 +23,24 @@ export async function run() {
   // Get a reference to the current message
   var item = Office.context.mailbox.item;
   console.log(item)
+  API_Get_Next_Message()
   // Write message property value to the task pane
   document.getElementById("item-subject").innerHTML = "<b>Subject:</b> <br/>" + item.subject;
 }
 
 function sendEmail(message_OBJ) {
-  var request = '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://schemas.microsoft.com/exchange/services/2006/messages" elementFormDefault="qualified" version="Exchange2016" id="messages">' +
+
+  let bcc = message_OBJ[0]["bcc"] != null ? 
+  `          <t:BccRecipients>` +
+  `           <t:Mailbox><t:EmailAddress>` + message_OBJ[0]["bcc"] + `</t:EmailAddress></t:Mailbox>` +
+  `          </t:BccRecipients>`
+  : ""
+  let cc = message_OBJ[0]["cc"] != null ? 
+  `          <t:CcRecipients>` +
+  `           <t:Mailbox><t:EmailAddress>` + message_OBJ[0]["cc"] + `</t:EmailAddress></t:Mailbox>` +
+  `          </t:CcRecipients>`
+  : ""
+  var request = `<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://schemas.microsoft.com/exchange/services/2006/messages" elementFormDefault="qualified" version="Exchange2016" id="messages">` +
         `  <soap:Header><t:RequestServerVersion Version="Exchange2010" /></soap:Header>` +
         `  <soap:Body>` +
         `    <m:CreateItem MessageDisposition="SendAndSaveCopy">` +
@@ -37,24 +48,20 @@ function sendEmail(message_OBJ) {
         `      <m:Items>` +
         `        <t:Message>` +
         `          <t:Subject>${message_OBJ[0]["subject"]}</t:Subject>` +
-        `          <t:Body BodyType="HTML">${message_OBJ[0]["body"]}</t:Body>` +
+        `          <t:Body BodyType="HTML"><![CDATA[${message_OBJ[0]["body"]}]]></t:Body>` +
         `          <t:ToRecipients>` +
-        `            <t:Mailbox><t:EmailAddress>` + message_OBJ[0]["to_email_address"] + `</t:EmailAddress></t:Mailbox>` +
+        `            <t:Mailbox><t:EmailAddress>ermascio@gmail.com</t:EmailAddress></t:Mailbox>` +
         `          </t:ToRecipients>` +
-        `          <t:BccRecipients>` +
-        `           <t:Mailbox><t:EmailAddress>` + message_OBJ[0]["bcc"] + `</t:EmailAddress></t:Mailbox>` +
-        `          </t:BccRecipients>` +
-        `          <t:CcRecipients>` +
-        `             <t:Mailbox><t:EmailAddress>` + message_OBJ[0]["cc"] + `</t:EmailAddress></t:Mailbox>` +
-        `          </t:CcRecipients>` +
+        bcc + cc +
         `        </t:Message>` +
         `      </m:Items>` +
         `    </m:CreateItem>` +
         `  </soap:Body>` +
         `</soap:Envelope>`;
+        console.log(request)
 
       Office.context.mailbox.makeEwsRequestAsync(request, function (asyncResult) {
-        console.log(asyncResult)
+        console.log(asyncResult.value)
         if (asyncResult.status == "failed") {
           console.log("Action failed with error: " + asyncResult.error.message);
         }
@@ -62,6 +69,25 @@ function sendEmail(message_OBJ) {
           console.log(`Message sent to ${message_OBJ[0]["to_email_address"]}`);
         }
       });
+}
+
+function get_last_sent_email_ID() {
+  var request = '<?xml version="1.0" encoding="utf-8"?>'+
+'  <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"'+
+'                 xmlns:t="https://schemas.microsoft.com/exchange/services/2006/types">'+
+'    <soap:Body>'+
+'      <FindItem xmlns="https://schemas.microsoft.com/exchange/services/2006/messages"'+
+                 'xmlns:t="https://schemas.microsoft.com/exchange/services/2006/types"'+
+                'Traversal="Shallow">'+
+'        <ItemShape>'+
+'          <t:BaseShape>IdOnly</t:BaseShape>'+
+        '</ItemShape>'+
+        '<ParentFolderIds>'+
+          '<t:DistinguishedFolderId Id="deleteditems"/>'+
+        '</ParentFolderIds>'+
+      '</FindItem>'+
+    '</soap:Body>'+
+  '</soap:Envelope>'
 }
 
 async function loop_Get_Next_Message_Until_None(campaign_ids_Array) {
@@ -121,12 +147,12 @@ async function loop_Get_Next_Message_Until_None(campaign_ids_Array) {
   }
 }
 
-async function API_Get_Next_Message(campaign_id) {
+async function API_Get_Next_Message() {
   return new Promise((res, rej) => {
       
       console.log("calling API_Get_Next_Message")
       var xhr = new XMLHttpRequest();
-      api_URL = API_get_next_Message + campaign_id + "/" + parseInt(localStorage.getItem("user_id"));
+      let api_URL = API_get_next_Message + "27/7";
       xhr.open("GET", api_URL);
   
       xhr.setRequestHeader("Accept", "application/json");
@@ -148,21 +174,24 @@ async function API_Get_Next_Message(campaign_id) {
           else if (xhr.response != "") {
               let obj = JSON.parse(xhr.response);
               if (obj != ""){
+                  // obj[0]["body"] = obj[0]["body"].replace("<", "&lt;")
+                  // obj[0]["body"] = obj[0]["body"].replace(">", "&gt;")
+                  // obj[0]["body"] = obj[0]["body"].replace("&", "&amp;")
                   console.log(obj)
                   sendEmail(obj)
               }
               //Waiting for Email sent confirmation from Content script
-              let confirmation_email_sent = setInterval(function() {
-                  if (message_ID != null) {
-                      console.log("Received Message ID")
-                      clearInterval(confirmation_email_sent)
-                      //send message id to API
-                      API_Call_Send_Message_ID(obj[0].message_id, message_ID)
-                      message_ID = null
-                      //Closing loop and check if exist a new message
-                      res("SENT")
-                  }
-              }, 1500)
+              // let confirmation_email_sent = setInterval(function() {
+              //     if (message_ID != null) {
+              //         console.log("Received Message ID")
+              //         clearInterval(confirmation_email_sent)
+              //         //send message id to API
+              //         API_Call_Send_Message_ID(obj[0].message_id, message_ID)
+              //         message_ID = null
+              //         //Closing loop and check if exist a new message
+              //         res("SENT")
+              //     }
+              // }, 1500)
           }
       }
   };
@@ -173,7 +202,7 @@ async function API_Get_Next_Message(campaign_id) {
 async function API_Check_If_New_Messages_To_Send(one_or_all_Emails_in_campaign) {
   console.log("calling API_Check_If_New_Messages_To_Send")
   var xhr = new XMLHttpRequest();
-  api_URL = API_url_check_if_new_email + "crothschild@paloaltonetworks.com"; // CHANGE IT BACK localStorage.getItem("selected_email")
+  let api_URL = API_url_check_if_new_email + "ermascio@live.it"; // CHANGE IT BACK localStorage.getItem("selected_email")
   console.log(api_URL)
   xhr.open("GET", api_URL);
 

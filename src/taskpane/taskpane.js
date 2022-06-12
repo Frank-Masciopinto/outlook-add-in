@@ -32,8 +32,9 @@ export async function run() {
 async function send_email_loop() {
   console.log("*** send_email_loop Started ***")
   while (true) {
+    console.log("Sending Next Email")
     let next_email_to_send = await API_Get_Next_Message()
-    if (next_email_to_send.match(/Error API Response is Empty||Error API Call/)) {
+    if (typeof next_email_to_send === "string") {
       console.log(next_email_to_send)
       console.log("Email Sending Sequence Stopped")
       break
@@ -43,11 +44,9 @@ async function send_email_loop() {
       if (email_was_sent == true) {
         let email_sent_ID = await get_last_sent_email_ID()
         await API_Call_Send_Message_ID(email_sent_ID)
-        break
       }
       else {
         console.log("Email Not Sent")
-        break
       }
     }
   }
@@ -80,6 +79,7 @@ async function API_Call_Send_Message_ID(message_ID) {
             else {
                 console.log(xhr.response)
                 console.log("message_ID sent")
+                res("message_ID sent")
             }
         }
     }};
@@ -122,7 +122,6 @@ return new Promise((res, rej) => {
         `    </m:CreateItem>` +
         `  </soap:Body>` +
         `</soap:Envelope>`;
-        console.log(request)
 
       Office.context.mailbox.makeEwsRequestAsync(request, function (asyncResult) {
         console.log(asyncResult.value)

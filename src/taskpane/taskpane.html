@@ -15,7 +15,7 @@
 
     <!-- For more information on Fluent UI, visit https://developer.microsoft.com/fluentui#/. -->
     <link rel="stylesheet" href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-core/9.6.1/css/fabric.min.css"/>
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
     <!-- Template styles -->
     <link href="taskpane.css" rel="stylesheet" type="text/css" />
 </head>
@@ -29,9 +29,17 @@
         <h2 class="ms-font-xl">Please sideload your add-in to see app body.</h2>
     </section>
     <main id="app-body" class="ms-welcome__main" style="display: none;">
-        <h2 class="ms-font-xl"> Hey Frank! Start using BPersonal Outlook Automation. </h2>
-        <p><label id="item-subject"></label></p>
-        <div role="button" id="run" class="ms-welcome__action ms-Button ms-Button--hero ms-font-xl">
+        <h2 class="ms-font-xl" id="greeting"></h2>
+        <div id="login-form">
+            <div class="space-evenly-flex">
+                <div class="center"><input placeholder="Email" type="text" id="email_loginBP"></div>
+                <div class="center"><input placeholder="Password" type="password" id="password"></div>
+            </div>
+            <button id="loginbtn" class="bextra_button" style="margin-left:44%">Login</button>
+        </div>
+        <p style="width: -webkit-fill-available;overflow-wrap: break-word;">
+            <label id="alert-user"></label></p>
+            <div role="button" id="run" class="ms-welcome__action ms-Button ms-Button--hero ms-font-xl">
             <span class="ms-Button-label">Start Sending Emails</span>
         </div>
     </main>

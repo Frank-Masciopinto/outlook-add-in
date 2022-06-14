@@ -10,33 +10,6 @@ let API_send_Id_URL = "https://api.bextra.io/email/update_email_send_ce/"
 let api_ERROR_URL = "https://api.bextra.io/error/report"
 let api_ce_login = "https://api.bextra.io/ce/login";
 
-var promise = document.hasStorageAccess();
-promise.then(
-  function (hasAccess) {
-    // Boolean hasAccess says whether the document has access or not.
-    console.log("It have storage access")
-  },
-  function (reason) {
-    // Promise was rejected for some reason.
-    console.log("No access")
-    makeRequestWithUserGesture()
-  }
-);
-
-function makeRequestWithUserGesture() {
-  var promise = document.requestStorageAccess();
-  promise.then(
-    function () {
-      // Storage access was granted.
-      console.log("Storage access was granted.")
-    },
-    function () {
-      console.log("Storage access was denied.")
-    }
-  );
-}
-
-
 Office.initialize = () => {
   console.log("Initialized")
 };
@@ -47,7 +20,7 @@ Office.onReady((info) => {
     document.getElementById("app-body").style.display = "flex";
     document.getElementById("greeting").innerHTML = `Hi ${Office.context.mailbox.userProfile.displayName}, Start Sending Email with BPersonal`
     document.getElementById("run").onclick = run;
-    let stored_regkey = localStorage.getItem("regkey")
+    let stored_regkey = Office.context.roamingSettings.get("regkey")
     if (stored_regkey != (undefined || "")) {//if logged in
       let login_form = document.getElementById("login-form")
       login_form.setAttribute("style", "display:none")
@@ -64,7 +37,7 @@ Office.onReady((info) => {
 });
 
 export async function run() {
-  if (localStorage.getItem("regkey") != (undefined||"")) {
+  if (Office.context.roamingSettings.get("regkey") != (undefined||"")) {
       send_email_loop()
     
   }
@@ -95,9 +68,9 @@ function login_API_call(email, password) {
 
 				let promis = new Promise((res, rej) => {
 					if (obj.length > 0) {
-            localStorage.setItem("full_name",obj[0].full_name);
-            localStorage.setItem("regkey",obj[0].reg_key);
-            localStorage.setItem("user_id",obj[0].user_id);
+            Office.context.roamingSettings.set("full_name",obj[0].full_name);
+            Office.context.roamingSettings.set("regkey",obj[0].reg_key);
+            Office.context.roamingSettings.set("user_id",obj[0].user_id);
             alertUser("Logged in Successfully")
             let log_form = document.getElementById("login-form")
             log_form.setAttribute("style", "display:none")
@@ -152,7 +125,7 @@ async function API_Call_Send_Message_ID(message_ID, email_ID) {
   return new Promise((res, rej) => {
     console.log("calling API_Call_Send_Message_ID")
     var xhr = new XMLHttpRequest();
-    let api_URL = API_send_Id_URL + email_ID + "/" + localStorage.getItem("user_id")
+    let api_URL = API_send_Id_URL + email_ID + "/" + Office.context.roamingSettings.get("user_id")
     xhr.open("POST", api_URL);
   
     xhr.setRequestHeader("Accept", "application/json");
@@ -304,7 +277,7 @@ async function get_bounced_email_addresses() {
         console.log(xmlDoc)
         let id = xmlDoc.getElementsByTagName("t:Items")[0].childNodes[0].getElementsByTagName("t:ItemId")[0].getAttribute("Id")
         let all_bounced_back_messages = xmlDoc.getElementsByTagName("t:Items")[0].childNodes
-        let last_sent_bounced_id = localStorage.getItem("blacklist")
+        let last_sent_bounced_id = Office.context.roamingSettings.get("blacklist")
         let blacklist_emails = []
         for (let i=0; i<all_bounced_back_messages.length; i++) {
           let bounced_email = all_bounced_back_messages[i].getAttribute("t:DisplayTo")
@@ -329,7 +302,7 @@ async function API_Get_Next_Message() {
       
       console.log("calling API_Get_Next_Message")
       var xhr = new XMLHttpRequest();
-      let api_URL = API_get_next_Message + Office.context.mailbox.userProfile.emailAddress + "/" + localStorage.getItem("regkey")
+      let api_URL = API_get_next_Message + Office.context.mailbox.userProfile.emailAddress + "/" + Office.context.roamingSettings.get("regkey")
       ;
       xhr.open("GET", api_URL);
   

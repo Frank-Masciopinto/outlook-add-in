@@ -94,7 +94,7 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://ext.bpersonal.ai/src/taskpane/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="Contoso Add-in"/>
+        <bt:String id="GroupLabel" DefaultValue="BPersonal Add-in"/>
         <bt:String id="TaskpaneButton.Label" DefaultValue="Show Taskpane"/>
         <bt:String id="ActionButton.Label" DefaultValue="Perform an action"/>
       </bt:ShortStrings>

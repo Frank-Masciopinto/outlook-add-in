@@ -10,6 +10,33 @@ let API_send_Id_URL = "https://api.bextra.io/email/update_email_send_ce/"
 let api_ERROR_URL = "https://api.bextra.io/error/report"
 let api_ce_login = "https://api.bextra.io/ce/login";
 
+var promise = document.hasStorageAccess();
+promise.then(
+  function (hasAccess) {
+    // Boolean hasAccess says whether the document has access or not.
+    console.log("It have storage access")
+  },
+  function (reason) {
+    // Promise was rejected for some reason.
+    console.log("No access")
+    makeRequestWithUserGesture()
+  }
+);
+
+function makeRequestWithUserGesture() {
+  var promise = document.requestStorageAccess();
+  promise.then(
+    function () {
+      // Storage access was granted.
+      console.log("Storage access was granted.")
+    },
+    function () {
+      console.log("Storage access was denied.")
+    }
+  );
+}
+
+
 Office.initialize = () => {
   console.log("Initialized")
 };
@@ -286,7 +313,7 @@ async function get_bounced_email_addresses() {
             break
           }
           else {
-            
+
           }
         }
         console.log(`ID Retrieved Below`);

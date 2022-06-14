@@ -4,8 +4,8 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Contoso</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="BPersonal Add-In"/>
-  <Description DefaultValue="A template to get started."/>
+  <DisplayName DefaultValue="bPersonal Outlook Add-In"/>
+  <Description DefaultValue="Work smarter with a powerful go-getter"/>
   <IconUrl DefaultValue="https://ext.bpersonal.ai/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://ext.bpersonal.ai/assets/icon-128.png"/>
   <SupportUrl DefaultValue="https://ext.bpersonal.ai"/>
@@ -94,7 +94,7 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://ext.bpersonal.ai/src/taskpane/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="BPersonal Add-in"/>
+        <bt:String id="GroupLabel" DefaultValue="bPersonal Outlook Add-In"/>
         <bt:String id="TaskpaneButton.Label" DefaultValue="Show Taskpane"/>
         <bt:String id="ActionButton.Label" DefaultValue="Perform an action"/>
       </bt:ShortStrings>

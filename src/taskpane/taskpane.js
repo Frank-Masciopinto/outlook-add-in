@@ -244,6 +244,59 @@ async function get_last_sent_email_ID() {
   })
 }
 
+async function get_bounced_email_addresses() {
+  return new Promise((res, rej) => {
+    var request = `<?xml version="1.0" encoding="UTF-8"?>
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:mes="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:typ="http://schemas.microsoft.com/exchange/services/2006/types">
+    <soap:Header>
+      <typ:RequestServerVersion Version="Exchange2010_SP2" />
+    </soap:Header>
+    <soap:Body>
+      <mes:FindItem Traversal="Shallow">
+         <mes:ItemShape>
+            <typ:BaseShape>Default</typ:BaseShape>
+         </mes:ItemShape>
+         <mes:ParentFolderIds>
+            <typ:DistinguishedFolderId Id="inbox" />
+         </mes:ParentFolderIds>
+         <mes:QueryString>Subject:Undeliverable</mes:QueryString>
+      </mes:FindItem>
+     </soap:Body>
+    </soap:Envelope>`
+  
+    Office.context.mailbox.makeEwsRequestAsync(request, function (asyncResult) {
+      console.log(asyncResult)
+      if (asyncResult.status != "succeeded") {
+        console.log("Action failed with error: " + asyncResult.error.message);
+        res("Failed")
+      }
+      else {
+        console.log(`Request Successfully Sent`);
+        let parser = new DOMParser();
+        let xmlDoc = parser.parseFromString(asyncResult.value, "text/xml");
+        console.log(xmlDoc)
+        let id = xmlDoc.getElementsByTagName("t:Items")[0].childNodes[0].getElementsByTagName("t:ItemId")[0].getAttribute("Id")
+        let all_bounced_back_messages = xmlDoc.getElementsByTagName("t:Items")[0].childNodes
+        let last_sent_bounced_id = localStorage.getItem("blacklist")
+        let blacklist_emails = []
+        for (let i=0; i<all_bounced_back_messages.length; i++) {
+          let bounced_email = all_bounced_back_messages[i].getAttribute("t:DisplayTo")
+          let bounced_id = all_bounced_back_messages[i].getElementsByTagName("t:ItemId")[0].getAttribute("Id")
+          if (last_sent_bounced_id.includes(bounced_id)) {//if email was already read, stop reading email
+            break
+          }
+          else {
+            
+          }
+        }
+        console.log(`ID Retrieved Below`);
+        console.log(id)
+        res(id)
+      }
+    });
+  })
+}
+
 async function API_Get_Next_Message() {
   return new Promise((res, rej) => {
       

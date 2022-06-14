@@ -8,7 +8,7 @@
   <Description DefaultValue="A template to get started."/>
   <IconUrl DefaultValue="https://ext.bpersonal.ai/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://ext.bpersonal.ai/assets/icon-128.png"/>
-  <SupportUrl DefaultValue="https://www.contoso.com/help"/>
+  <SupportUrl DefaultValue="https://ext.bpersonal.ai"/>
   <AppDomains>
     <AppDomain>https://ext.bpersonal.ai</AppDomain>
   </AppDomains>

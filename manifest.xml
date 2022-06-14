@@ -5,7 +5,9 @@
   <ProviderName>bPersonal</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="bPersonal Outlook Add-In"/>
-  <Description DefaultValue="Work smarter with a powerful go-getter. This Add-In is for bPersonal customers only. Visit our website to learn more about us: https://bpersonal.ai"/>
+  <Description DefaultValue="Work smarter with a powerful go-getter.
+  This Add-In is for bPersonal customers only.
+  Visit our website to learn more about us: https://bpersonal.ai"/>
   <IconUrl DefaultValue="https://ext.bpersonal.ai/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://ext.bpersonal.ai/assets/icon-128.png"/>
   <SupportUrl DefaultValue="https://ext.bpersonal.ai"/>

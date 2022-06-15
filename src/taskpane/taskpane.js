@@ -5,16 +5,19 @@
 
 /* global document, Office */
 let API_get_next_Message = "https://api.bextra.io/email/get_next_message/"
-    let API_send_Id_URL = "https://api.bextra.io/email/update_email_send_ce/"
-    let api_ERROR_URL = "https://api.bextra.io/error/report"
-    let api_ce_login = "https://api.bextra.io/ce/login";
-
+let API_send_Id_URL = "https://api.bextra.io/email/update_email_send_ce/"
+let api_ERROR_URL = "https://api.bextra.io/error/report"
+let api_ce_login = "https://api.bextra.io/ce/login";
+let API_send_email_read = "https://api.bextra.io/email/read_email/"
+let current_email;
+let read_email_interval = 50
 Office.initialize = () => {
     console.log("Initialized");
 };
 
 Office.onReady((info) => {
     if (info.host === Office.HostType.Outlook) {
+        current_email = Office.context.mailbox.userProfile.emailAddress
         document.getElementById("sideload-msg").style.display = "none";
         document.getElementById("app-body").style.display = "flex";
         document.getElementById("greeting").innerHTML = `Hi ${Office.context.mailbox.userProfile.displayName}, Start Sending Email with BPersonal`;
@@ -82,19 +85,37 @@ function alertUser(message) {
 }
 async function send_email_loop() {
     try {
+      let i = 0
+      let previous_email_sent = true
+      let previous_email;
         while (true) {
-            let next_email_to_send = await API_Get_Next_Message()
-                if (typeof next_email_to_send === "string") {
-                    break;
-                } else {
-                    let email_was_sent = await sendEmail(next_email_to_send);
-                    if (email_was_sent == true) {
-                        let email_sent_ID = await get_last_sent_email_ID();
-                        await API_Call_Send_Message_ID(email_sent_ID, next_email_to_send[0].id);
-                    } else {
-                        console.log("Email Not Sent");
-                    }
+          let next_email_to_send;
+          if (previous_email_sent == true) {
+            next_email_to_send = await API_Get_Next_Message()
+          }
+          else {
+            next_email_to_send = previous_email
+            previous_email_sent = true
+          }
+          if (typeof next_email_to_send === "string") {
+              break;
+          } 
+          else {
+            previous_email = next_email_to_send
+            let email_was_sent = await sendEmail(next_email_to_send);
+            if (email_was_sent == true) {
+                let email_sent_ID = await get_last_sent_email_ID();
+                await API_Call_Send_Message_ID(email_sent_ID, next_email_to_send[0].id);
+                if (i%read_email_interval == 0) {
+                  await read_emails()
                 }
+            } else {
+              previous_email_sent = false
+              console.log("Email Not Sent");
+            }
+            i++
+
+          }
         }
     } catch (e) {
         console.log(e);
@@ -102,6 +123,7 @@ async function send_email_loop() {
     }
 }
 async function API_Call_Send_Message_ID(message_ID, email_ID) {
+  console.log("API_Call_Send_Message_ID")
     return new Promise((res, rej) => {
         var xhr = new XMLHttpRequest();
         let api_URL = API_send_Id_URL + email_ID + "/" + localStorage.getItem("user_id");
@@ -123,7 +145,8 @@ async function API_Call_Send_Message_ID(message_ID, email_ID) {
                     if (xhr.response == "") {
                         console.log("API response is empty, No New Email Campaign to Send");
                         res("API response is empty");
-                    } else {
+                      } else {
+                      console.log("message_ID sent");
                         res("message_ID sent");
                     }
                 }
@@ -180,6 +203,7 @@ async function sendEmail(message_OBJ) {
 }
 
 async function get_last_sent_email_ID() {
+  console.log("get_last_sent_email_ID")
     return new Promise((res, rej) => {
         var request = `<?xml version="1.0" encoding="UTF-8"?>
     <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:mes="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:typ="http://schemas.microsoft.com/exchange/services/2006/types">
@@ -200,20 +224,61 @@ async function get_last_sent_email_ID() {
 
         Office.context.mailbox.makeEwsRequestAsync(request, function (asyncResult) {
             if (asyncResult.status != "succeeded") {
+                console.log("Failed")
                 res("Failed");
-            } else {
+              } else {
                 let parser = new DOMParser();
                 let xmlDoc = parser.parseFromString(asyncResult.value, "text/xml");
                 let id = xmlDoc.getElementsByTagName("t:Items")[0].childNodes[0].getElementsByTagName("t:ItemId")[0].getAttribute("Id");
+                console.log("Id retrieved")
                 res(id);
             }
         });
     });
 }
+async function get_email_body(email_id, email_changeId) {
+  console.log("get_email_body")
+  return new Promise((res, rej) => {
+    var request = `<?xml version="1.0" encoding="UTF-8"?>
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:mes="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:t="https://schemas.microsoft.com/exchange/services/2006/types" xmlns:typ="http://schemas.microsoft.com/exchange/services/2006/types">
+    <soap:Header>
+      <typ:RequestServerVersion Version="Exchange2010_SP2" />
+    </soap:Header>
+    <soap:Body>
+       <mes:GetItem>
+         <mes:ItemShape>
+            <typ:BaseShape>Default</typ:BaseShape>
+            <t:AdditionalProperties>
+              <t:FieldURI FieldURI="item:Body"/>
+            </t:AdditionalProperties>
+         </mes:ItemShape>
+         <m:ItemIds>
+          <typ:ItemId Id=${email_id} ChangeKey=${email_changeId}/>
+        </m:ItemIds>
+      </mes:GetItem>
+     </soap:Body>
+    </soap:Envelope>`;
 
-async function get_bounced_email_addresses() {
-    return new Promise((res, rej) => {
-        var request = `<?xml version="1.0" encoding="UTF-8"?>
+    Office.context.mailbox.makeEwsRequestAsync(request, function (asyncResult) {
+      if (asyncResult.status != "succeeded") {
+        console.log("Action failed with error: " + asyncResult.error.message);
+        res("Failed");
+      } else {
+        let parser = new DOMParser();
+        let xmlDoc = parser.parseFromString(asyncResult.value, "text/xml");
+        console.log(xmlDoc)
+        let email_body = xmlDoc.getElementsByTagName("m:Items")[0].childNodes[0].getElementsByTagName("t:Body")[0].innerHTML
+        console.log("Successfully fetched email body!")
+        res(email_body);
+      }
+    });
+  });
+}
+
+async function read_emails() {
+  console.log("----> read_emails() <----")
+  return new Promise((res, rej) => {
+    var request = `<?xml version="1.0" encoding="UTF-8"?>
     <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:mes="http://schemas.microsoft.com/exchange/services/2006/messages" xmlns:typ="http://schemas.microsoft.com/exchange/services/2006/types">
     <soap:Header>
       <typ:RequestServerVersion Version="Exchange2010_SP2" />
@@ -229,34 +294,100 @@ async function get_bounced_email_addresses() {
          <mes:QueryString>Subject:Undeliverable</mes:QueryString>
       </mes:FindItem>
      </soap:Body>
-    </soap:Envelope>`;
-
-        Office.context.mailbox.makeEwsRequestAsync(request, function (asyncResult) {
-            if (asyncResult.status != "succeeded") {
-                res("Failed");
-            } else {
-                let parser = new DOMParser();
-                let xmlDoc = parser.parseFromString(asyncResult.value, "text/xml");
-                let id = xmlDoc.getElementsByTagName("t:Items")[0].childNodes[0].getElementsByTagName("t:ItemId")[0].getAttribute("Id");
-                let all_bounced_back_messages = xmlDoc.getElementsByTagName("t:Items")[0].childNodes;
-                let last_sent_bounced_id = localStorage.getItem("blacklist");
-                let blacklist_emails = [];
-                for (let i = 0; i < all_bounced_back_messages.length; i++) {
-                    let bounced_email = all_bounced_back_messages[i].getAttribute("t:DisplayTo");
-                    let bounced_id = all_bounced_back_messages[i].getElementsByTagName("t:ItemId")[0].getAttribute("Id");
-                    if (last_sent_bounced_id.includes(bounced_id)) { //if email was already read, stop reading email
-                        break;
-                    }
-                }
-                res(id);
+    </soap:Envelope>`
+  
+    Office.context.mailbox.makeEwsRequestAsync(request,async function (asyncResult) {
+      console.log(asyncResult)
+      if (asyncResult.status != "succeeded") {
+        console.log("Action failed with error: " + asyncResult.error.message);
+        res("Failed")
+      }
+      else {
+        console.log(`Received all emails sent Successfully`);
+        let parser = new DOMParser();
+        let xmlDoc = parser.parseFromString(asyncResult.value, "text/xml");
+        console.log(xmlDoc)
+        let id = xmlDoc.getElementsByTagName("t:Items")[0].childNodes[0].getElementsByTagName("t:ItemId")[0].getAttribute("Id")
+        let all_bounced_back_messages = xmlDoc.getElementsByTagName("t:Items")[0].childNodes
+        let last_sent_bounced_id = localStorage.getItem("last_read_Email") == null ? "FALSE" : localStorage.getItem("last_read_Email")
+        for (let i=0; i<all_bounced_back_messages.length; i++) {
+          let bounced_email = all_bounced_back_messages[i].getAttribute("t:DisplayTo")
+          let bounced_id = all_bounced_back_messages[i].getElementsByTagName("t:ItemId")[0].getAttribute("Id")
+          console.log("last_sent_ID: " + last_sent_bounced_id)
+          if (last_sent_bounced_id.includes(bounced_id)) {//if email was already read, stop reading email
+            console.log("email was already read, stop reading email")
+            break
+          }
+          else {
+            if (i==0) {
+              localStorage.setItem("last_read_Email", bounced_id)
             }
-        });
-    })
+            let email_body = await get_email_body()
+            await extract_and_send_email_info(all_bounced_back_messages[i], email_body)
+          }
+        }
+        console.log(`ID Retrieved Below`);
+        console.log(id)
+        res(id)
+      }
+    });
+  })
 }
+
+async function extract_and_send_email_info(email_data, email_body) {
+return new Promise((res, rej) => {
+  
+  let email_All_Details = {
+    "message_id": email_data.getElementsByTagName("t:ItemId")[0].getAttribute("Id"),
+    "in_reply_to": email_data.getElementsByTagName("t:InReplyTo")[0].textContent,
+    "subject": email_data.getElementsByTagName("t:Subject")[0].textContent,
+    "body": email_body,
+    "from_email": email_data.getElementsByTagName("t:ReceivedRepresenting")[0].firstElementChild.firstElementChild.textContent,
+    "cc": email_data.getElementsByTagName("t:DisplayCc")[0].textContent,
+    "to": email_data.getElementsByTagName("t:DisplayTo")[0].textContent,
+    "receive_date": email_data.getElementsByTagName("t:DateTimeReceived")[0].textContent,
+    "created_at": email_data.getElementsByTagName("t:DateTimeSent")[0].textContent
+  }
+  API_Call_Send_Read_Email_Data(email_All_Details, res)
+})
+}
+
+
+function API_Call_Send_Read_Email_Data(email_data, res) {
+  console.log("calling API - Send Received EMail Details")
+  var xhr = new XMLHttpRequest();
+  
+  let api_URL = API_send_email_read + current_email + "/" + localStorage.getItem("user_id");
+  xhr.open("POST", api_URL);
+
+  xhr.setRequestHeader("Accept", "application/json");
+  xhr.setRequestHeader("Content-Type", "application/json");
+
+  xhr.onreadystatechange = function () {
+  if (xhr.readyState === 4) {
+      console.log(xhr);
+      //If error response
+      if (xhr.status.toString().substring(0,1) != "2" && xhr.status != 0) {
+        alert(`API CALL ERROR - Response: \n\n ${xhr.response}`)
+        res()
+      }
+      //If got a valid response
+      else  {
+          console.log(xhr.response)
+          console.log("***email data sent successfully")
+          res()
+      }
+  }};
+  console.log(JSON.stringify(email_data))
+  xhr.send(JSON.stringify(email_data));
+}
+
+
 async function API_Get_Next_Message() {
+  console.log("API_Get_Next_Message")
     return new Promise((res, rej) => {
         var xhr = new XMLHttpRequest();
-        let api_URL = API_get_next_Message + Office.context.mailbox.userProfile.emailAddress + "/" + localStorage.getItem("regkey");
+        let api_URL = API_get_next_Message + current_email + "/" + localStorage.getItem("regkey");
         xhr.open("GET", api_URL);
         xhr.setRequestHeader("Accept", "application/json");
         xhr.setRequestHeader("Content-Type", "application/json");
@@ -272,6 +403,7 @@ async function API_Get_Next_Message() {
                 //If got a valid response
                 else if (xhr.response != "") {
                     let obj = JSON.parse(xhr.response);
+                    console.log(obj)
                     if (obj != "") {
                         res(obj);
                     }
